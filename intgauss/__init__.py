@@ -1,6 +1,5 @@
 from ._base import GaussianInteger
-from ._primes import *
-from ._funcs import *
+from ._funcs import round_complex, complex_distance, is_prime
 from ._arrays import *
 
 

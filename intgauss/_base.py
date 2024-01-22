@@ -1,17 +1,27 @@
 from numbers import Complex, Integral
 import random
 from math import cos, sin, log
-from abc import ABC, abstractmethod
 from typing import TypeAlias
+
+from ._funcs import round_complex, is_prime
 
 
 Integer: TypeAlias = int | Integral
 
 
-class GaussianNumber(Complex, ABC):
-    """Abstract Gaussian number"""
+class GaussianInteger(Complex):
+    """
+    Provides a gaussian complex integer numbers
+
+    Definition
+    ----------
+    Gaussian complex integer numbers is numbers of the form:
+
+    z = a + bj, where a and b is a integers
+    """
     _real: Integer
     _image: Integer
+    __is_prime__: bool | None  # saves the test result for a prime number
 
     def __init__(self, real: Integer = 0,
                  imag: Integer = 0) -> None:
@@ -21,53 +31,52 @@ class GaussianNumber(Complex, ABC):
 
         self._real = real
         self._imag = imag
+        self.__is_prime__ = None
 
     def __complex__(self) -> complex:
         return complex(self._real, self._image)
 
     @property
     def real(self) -> Integer:
-        """Retrieve the real component of this number.
-        """
+        """Retrieve the real component of this number."""
         return self._real
 
     @real.setter
     def real(self, value: Integer) -> None:
         self._real = value
+        self.__is_prime__ = None
 
     @property
     def imag(self) -> Integer:
-        """Retrieve the image component of this number.
-        """
+        """Retrieve the image component of this number."""
         return self._imag
 
     @imag.setter
     def imag(self, value: Integer) -> None:
         self._imag = value
+        self.__is_prime__ = None
 
-    @abstractmethod
-    def __floordiv__(self, other) -> Complex:
+    def __floordiv__(self, other: Complex) -> Complex:
         """self // other"""
-        raise NotImplementedError
+        float_complex: complex = self / other
+        return round_complex(float_complex)
 
-    @abstractmethod
-    def __rfloordiv__(self, other) -> Complex:
+    def __rfloordiv__(self, other: Complex) -> Complex:
         """other // self"""
-        raise NotImplementedError
+        float_complex: complex = other / self
+        return round_complex(float_complex)
 
-    @abstractmethod
-    def __mod__(self, other) -> Complex:
+    def __mod__(self, other: Complex) -> Complex:
         """self % other"""
-        raise NotImplementedError
+        return self - other * (self // other)
 
-    @abstractmethod
-    def __rmod__(self, other) -> Complex:
+    def __rmod__(self, other: Complex) -> Complex:
         """other % self"""
-        raise NotImplementedError
+        return other % self
 
     def __eq__(self, other: object) -> bool:
         """self == other"""
-        if not isinstance(other, GaussianNumber):
+        if not isinstance(other, Complex):
             raise TypeError("cannot compare complex number and %s"
                             % type(other))
         return self.real == other.real and self.imag == other.imag
@@ -89,7 +98,7 @@ class GaussianNumber(Complex, ABC):
         elif other.real == 0 and other.imag == 0:
             raise ZeroDivisionError("complex division by zero complex")
         else:
-            numerator_complex: GaussianNumber = self * other.conjugate()
+            numerator_complex: Complex = self * other.conjugate()
             denominator_num: Integral = other.real ** 2 + other.imag ** 2
             new_real = numerator_complex.real / denominator_num
             new_imag = numerator_complex.imag / denominator_num
@@ -154,21 +163,23 @@ class GaussianNumber(Complex, ABC):
         return self.real + other.real
 
     @property
-    @abstractmethod
     def associated(self) -> tuple[Complex, Complex,
                                   Complex]:
         """Returns a tuple of associated gaussian numbers of this."""
-        raise NotImplementedError
+        return (self * GaussianInteger(-1, 0),
+                self * GaussianInteger(0, 1),
+                self * GaussianInteger(0, -1))
 
-    @abstractmethod
     def __bool__(self) -> bool:
-        """Converts this number to a boolean"""
-        raise NotImplementedError
+        """Returns True if real and image are not equal zero"""
+        return self._real != 0 and self._image != 0
 
     def __neg__(self) -> Complex:
+        """Returns new number of negative this number"""
         return GaussianInteger(-self.real, -self.imag)
 
     def __pos__(self) -> Complex:
+        """Returns new number of positive this number"""
         return GaussianInteger(+self.real, +self.imag)
 
     def __str__(self) -> str:
@@ -179,51 +190,30 @@ class GaussianNumber(Complex, ABC):
     def __repr__(self) -> str:
         return self.__str__()
 
-
-class GaussianInteger(GaussianNumber):
-    """
-    Provides a gaussian complex integer numbers
-
-    Definition
-    ----------
-    Gaussian complex integer numbers is numbers of the form:
-
-    z = a + bj, where a and b is a integers
-    """
-    def __bool__(self) -> bool:
-        """Returns True if real and image are not equal zero"""
-        return self._real != 0 and self._image != 0
+    @property
+    def is_unit(self) -> bool:
+        """Check if this number is gaussian integer unit"""
+        return (self.real == 1 and self.imag == 0 or
+                self.real == 0 and self.imag == 1 or
+                self.real == -1 and self.imag == 0 or
+                self.real == 0 and self.imag == -1)
 
     @property
-    def associated(self) -> tuple[Complex, Complex,
-                                  Complex]:
-        return (self * GaussianInteger(-1, 0),
-                self * GaussianInteger(0, 1),
-                self * GaussianInteger(0, -1))
-
-    def __floordiv__(self, other: GaussianNumber) -> GaussianNumber:
-        """self // other"""
-        float_complex: complex = self / other
-        new_real = round(float_complex.real)
-        new_imag = round(float_complex.imag)
-        return GaussianInteger(new_real, new_imag)
-
-    def __rfloordiv__(self, other: GaussianNumber) -> GaussianNumber:
-        """other // self"""
-        return other // self
-
-    def __mod__(self, other: GaussianNumber) -> GaussianNumber:
-        """self % other"""
-        return self - other * (self // other)
-
-    def __rmod__(self, other: GaussianNumber) -> GaussianNumber:
-        """other % self"""
-        return other % self
+    def is_prime(self) -> bool:
+        if self.__is_prime__ is None:
+            self.__is_prime__ = is_prime(self)
+        return self.__is_prime__
 
     @staticmethod
     def random(a: int, b: int,
-               seed: int | None = None) -> GaussianNumber:
-        """Returns a random gaussian integer number"""
+               seed: int | None = None) -> Complex:
+        """
+        Returns a random gaussian integer number
+
+        a: int - min value for random generation\\
+        b: int - max value for random generation\\
+        seed: int | None = None - seed for random generation
+        """
         random.seed(seed)
         real = random.randint(a, b)
         image = random.randint(a, b)

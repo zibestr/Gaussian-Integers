@@ -1,5 +1,1 @@
-from ._base import GaussianNumber
-
-
-class GaussianPrime(GaussianNumber):
-    pass
+from ._base import GaussianInteger
